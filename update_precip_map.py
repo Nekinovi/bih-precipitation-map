@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import sys
+print("DEBUG: Skripta je pokrenuta!", flush=True)
+sys.stdout.flush()
 
 import json
 import requests
