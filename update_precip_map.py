@@ -49,14 +49,14 @@ def generate_grid():
     print(f"Generirano {len(points)} grid tačaka")
     return points
 
-@retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(5))
+@retry(wait=wait_exponential(multiplier=1, min=4, max=30), stop=stop_after_attempt(7))
 def fetch_precip_for_point(lat, lon, start_date, end_date):
     """Dohvata dnevne padavine za jednu tačku sa Open-Meteo API."""
     url = (f"https://api.open-meteo.com/v1/forecast"
            f"?latitude={lat}&longitude={lon}"
            f"&start_date={start_date}&end_date={end_date}"
            f"&daily=precipitation_sum&timezone=Europe/Sarajevo")
-    resp = requests.get(url, timeout=10)
+    resp = requests.get(url, timeout=30)
     resp.raise_for_status()
     return resp.json()
 
@@ -86,7 +86,7 @@ def fetch_all_data(grid_points, start_date, end_date):
         except Exception as e:
             print(f"Greška za {lat},{lon}: {e}")
         # Pauza da ne preopteretimo API
-        time.sleep(0.1)
+        time.sleep(0.5)
         if (idx + 1) % 100 == 0:
             print(f"Procesirano {idx+1}/{total} tačaka")
     print(f"Ukupno prikupljeno {len(records)} zapisa")
