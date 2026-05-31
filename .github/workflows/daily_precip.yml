@@ -24,8 +24,10 @@ jobs:
         pip install requests numpy folium tenacity
         
     - name: Run script and update map
-      run: python update_precip_map.py
-        
+      run: |
+        python -u update_precip_map.py 2>&1 | tee output.log
+        cat output.log
+    
     - name: Commit and push changes
       run: |
         git config --local user.email "action@github.com"
