@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import sys
-print("DEBUG: Skripta je pokrenuta!", flush=True)
-sys.stdout.flush()
-
+import os
 import json
 import requests
 import time
@@ -122,11 +119,11 @@ def create_timemap(records, border_path, output_path):
     HeatMapWithTime(
         heat_data,
         index=index,
-        auto_play=True,
+        auto_play=False,
         max_opacity=0.8,
         gradient={0.0: '#ADD8E6', 0.25: '#87CEEB', 0.5: '#4169E1', 0.75: '#8A28E2', 1.0: '#4B0B82'},
-        radius=20,
-        blur=15
+        radius=25,
+        blur=0.7
     ).add_to(m)
     
     legend_html = '''
@@ -139,11 +136,11 @@ def create_timemap(records, border_path, output_path):
     </div>
     '''
     m.get_root().html.add_child(folium.Element(legend_html))
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     m.save(output_path)
     print(f"Mapa sačuvana kao {output_path}")
 
 def main():
-    print("DEBUG: Usao u main()", flush=True)
     print("Pokrećem automatsko ažuriranje karte padavina...")
     # 1. Datumi: posljednjih 10 dana (do jučer)
     end_date = datetime.now() - timedelta(days=1)
