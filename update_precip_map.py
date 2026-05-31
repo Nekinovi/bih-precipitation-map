@@ -143,6 +143,7 @@ def create_timemap(records, border_path, output_path):
     print(f"Mapa sačuvana kao {output_path}")
 
 def main():
+    print("DEBUG: Usao u main()", flush=True)
     print("Pokrećem automatsko ažuriranje karte padavina...")
     # 1. Datumi: posljednjih 10 dana (do jučer)
     end_date = datetime.now() - timedelta(days=1)
