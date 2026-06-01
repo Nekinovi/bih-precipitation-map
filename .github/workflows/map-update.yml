@@ -4,6 +4,7 @@ on:
   schedule:
     - cron: '15 1 * * *'
   workflow_dispatch:
+    
 
 permissions:
   contents: write   # Ovo omogućava pisanje u repozitorij
