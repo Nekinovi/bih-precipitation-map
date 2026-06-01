@@ -5,9 +5,10 @@ import json
 import os
 import time
 import requests
+from folium.plugins import Geocoder
 from datetime import datetime, timedelta
 from collections import defaultdict
-
+from folium.plugins import HeatMapWithTime, Geocoder  # Dodano Geocoder ovdje
 import folium
 import numpy as np
 import openmeteo_requests
@@ -19,7 +20,7 @@ from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
 BIH_BORDER_URL = "https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson"
 BORDER_FILENAME = "bi_border.geojson"
 OUTPUT_HTML = "docs/index.html"
-GRID_STEP = 0.05
+GRID_STEP = 0.1
 DAYS_TO_FETCH = 10
 
 MIN_LAT, MAX_LAT = 42.5, 45.3
@@ -122,7 +123,7 @@ def create_timemap(records, border_path, output_path):
         lat = float(rec['lat'])
         lon = float(rec['lon'])
         precip = float(rec['precipitation_sum'])
-        data_by_date[date].append([lat, lon, precip])
+        data_by_date[date].append([lat, lon, min(precip / 10.0, 1.0)])
     
     index = sorted(data_by_date.keys())
     print(f"Index (datumi za slider): {index}")
@@ -143,11 +144,11 @@ def create_timemap(records, border_path, output_path):
         index=index,
         auto_play=False,
         max_opacity=0.6,
-        gradient={0.0: '#ADD8E6', 0.25: '#87CEEB', 0.5: '#4169E1', 0.75: '#8A28E2', 1.0: '#4B0B82'},
-        radius=0.07,  # Prilagođeno za veći grid step
+        gradient={0.0: '#ADD8E6', 0.1: '#87CEEB', 0.5: '#4169E1', 1.0: '#8A2BE2'},
+        radius=0.09,  # Prilagođeno za veći grid step
         blur=0.5,
         scale_radius=True,
-        use_local_extrema=True
+        use_local_extrema=False
     ).add_to(m)
     
     legend_html = '''
@@ -160,6 +161,9 @@ def create_timemap(records, border_path, output_path):
     </div>
     '''
     m.get_root().html.add_child(folium.Element(legend_html))
+    # Ugrađeni Folium Geocoder koji automatski pronalazi ispravnu varijablu mape
+    Geocoder(placeholder="Pretraži lokaciju...", collapsed=False).add_to(m)
+    # ===== KRAJ KUTIJE ZA PRETRAGU =====
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     m.save(output_path)
