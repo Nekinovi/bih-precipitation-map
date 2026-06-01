@@ -259,11 +259,11 @@ def create_timemap(records, border_path, output_path):
 
 def main():
     print("Pokrećem automatsko ažuriranje karte padavina...")
-    end_date = datetime.now() - timedelta(days=1)
+    end_date = datetime.now() - timedelta(days=0)
     start_date = end_date - timedelta(days=DAYS_TO_FETCH - 1)
     start_str = start_date.strftime('%Y-%m-%d')
     end_str = end_date.strftime('%Y-%m-%d')
-    print(f"Period: {start_str} – {end_str}")
+    print(f"Period: {(start_date-timedelta(days=1)).strftime('%d-%m-%Y')} – {(end_date-timedelta(days=1)).strftime('%d-%m-%Y')}")
     
     try:
         download_bih_border()
