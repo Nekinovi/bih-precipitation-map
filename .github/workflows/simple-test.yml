@@ -16,5 +16,5 @@ jobs:
 
       - name: Run a simple test script
         run: |
-          echo 'Running scheduled smoke tests...'
-          echo 'Current time is $(date)'
+          echo "Running scheduled smoke tests..."
+          echo "Current time is $(date)"
