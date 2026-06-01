@@ -19,7 +19,7 @@ from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
 BIH_BORDER_URL = "https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson"
 BORDER_FILENAME = "bi_border.geojson"
 OUTPUT_HTML = "docs/index.html"
-GRID_STEP = 0.1
+GRID_STEP = 0.5
 DAYS_TO_FETCH = 10
 
 MIN_LAT, MAX_LAT = 42.5, 45.3
