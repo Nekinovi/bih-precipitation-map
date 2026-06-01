@@ -20,7 +20,7 @@ from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
 BIH_BORDER_URL = "https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson"
 BORDER_FILENAME = "bi_border.geojson"
 OUTPUT_HTML = "docs/index.html"
-GRID_STEP = 0.1
+GRID_STEP = 0.5
 DAYS_TO_FETCH = 10
 
 MIN_LAT, MAX_LAT = 42.5, 45.3
@@ -162,8 +162,96 @@ def create_timemap(records, border_path, output_path):
     '''
     m.get_root().html.add_child(folium.Element(legend_html))
     # Ugrađeni Folium Geocoder koji automatski pronalazi ispravnu varijablu mape
-    Geocoder(placeholder="Pretraži lokaciju...", collapsed=False).add_to(m)
-    # ===== KRAJ KUTIJE ZA PRETRAGU =====
+    m.get_root().header.add_child(folium.Element(
+        '<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>'
+    ))
+
+    # Folium Geocoder - folium garantuje ispravan red ucitavanja
+
+    report_js = """
+    window.addEventListener('load', function() {
+        var t = 0;
+        (function waitL() {
+            if (window.L && typeof MAP_VAR !== 'undefined') {
+                if (typeof L.Control.geocoder === 'function') { start(); }
+                else {
+                    var css = document.createElement('link');
+                    css.rel = 'stylesheet';
+                    css.href = 'https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css';
+                    document.head.appendChild(css);
+                    var s = document.createElement('script');
+                    s.src = 'https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js';
+                    s.onload = start;
+                    s.onerror = function(){ console.error('Geocoder lib se ne moze ucitati'); };
+                    document.head.appendChild(s);
+                }
+            } else if (t++ < 100) { setTimeout(waitL, 100); }
+            else { console.error('Leaflet ili mapa nisu spremni'); }
+        })();
+
+        function start() {
+            var map = MAP_VAR;
+            var reportMarker = null;
+
+            var geocoder = L.Control.geocoder({
+                defaultMarkGeocode: false,
+                collapsed: false,
+                placeholder: 'Pretrazi lokaciju...'
+            }).addTo(map);
+
+            geocoder.on('markgeocode', function(e) {
+                var c = e.geocode.center;
+                map.setView(c, 10);
+                showReport(c.lat, c.lng, e.geocode.name);
+            });
+
+            function showReport(lat, lon, name) {
+                if (reportMarker) { map.removeLayer(reportMarker); }
+                reportMarker = L.marker([lat, lon]).addTo(map);
+
+                var cid = 'chart_' + Date.now();
+                var html = '<div style="width:280px"><b>' + (name || 'Lokacija') + '</b>'
+                    + '<div style="font-size:12px;color:#555">Padavine, zadnjih 10 dana</div>'
+                    + '<canvas id="' + cid + '" width="280" height="170"></canvas>'
+                    + '<div id="' + cid + '_t" style="font-size:13px;margin-top:4px"></div></div>';
+                reportMarker.bindPopup(html, {minWidth: 300}).openPopup();
+
+                var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat
+                    + '&longitude=' + lon
+                    + '&daily=precipitation_sum&past_days=10&forecast_days=1&timezone=Europe%2FSarajevo';
+
+                fetch(url).then(function(r){ return r.json(); }).then(function(data) {
+                    var today = new Date().toISOString().slice(0,10);
+                    var labels = [], vals = [];
+                    for (var i = 0; i < data.daily.time.length; i++) {
+                        if (data.daily.time[i] < today) {
+                            labels.push(data.daily.time[i].slice(5));
+                            vals.push(data.daily.precipitation_sum[i] || 0);
+                        }
+                    }
+                    labels = labels.slice(-10); vals = vals.slice(-10);
+                    var total = vals.reduce(function(a,b){ return a+b; }, 0);
+
+                    var ctx = document.getElementById(cid);
+                    if (!ctx || typeof Chart === 'undefined') return;
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: { labels: labels, datasets: [{ data: vals, backgroundColor: '#4169E1' }] },
+                        options: {
+                            plugins: { legend: { display: false } },
+                            scales: { y: { beginAtZero: true, title: { display: true, text: 'mm' } } }
+                        }
+                    });
+                    document.getElementById(cid + '_t').innerHTML = '<b>Ukupno: ' + total.toFixed(1) + ' mm</b>';
+                }).catch(function(){
+                    var el = document.getElementById(cid + '_t');
+                    if (el) el.innerHTML = 'Greska pri dohvatu podataka.';
+                });
+            }
+        }
+    });
+    """.replace("MAP_VAR", m.get_name())
+    m.get_root().script.add_child(folium.Element(report_js))
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     m.save(output_path)
