@@ -1,0 +1,22 @@
+name: Test Scheduled Workflow
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  test-schedule:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test run
+        run: |
+          echo "✅ Scheduled workflow triggered successfully!"
+          echo "Current time: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          echo "Workflow: Test Scheduled Workflow"
+      
+      - name: Show system info
+        run: |
+          echo "Runner OS: ${{ runner.os }}"
+          echo "GitHub SHA: ${{ github.sha }}"
+          echo "Triggered by: ${{ github.event_name }}"
