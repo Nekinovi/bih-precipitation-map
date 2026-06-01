@@ -2,7 +2,7 @@ name: Daily Precipitation Map Update
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '30 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -36,7 +36,8 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git fetch origin main  # Add this line
+          git fetch origin main
           git add docs/index.html bi_border.geojson || true
           git commit -m "Ažurirana mapa padavina za $(date +'%Y-%m-%d')" || echo "No changes to commit"
+          git rebase origin/main || true
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
