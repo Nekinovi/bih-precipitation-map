@@ -1,0 +1,21 @@
+name: Scheduled Simple Test
+
+on:
+  # Runs automatically on a cron schedule (Every day at 08:00 UTC)
+  schedule:
+    - cron: '*/12 * * * *'
+  
+  # Allows you to manually trigger the test anytime from the Actions UI
+  workflow_dispatch: 
+
+jobs:
+  run-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Run a simple test script
+        run: |
+          echo "Running scheduled smoke tests..."
+          echo "Current time is $(date)
