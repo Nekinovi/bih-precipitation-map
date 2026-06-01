@@ -93,7 +93,7 @@ def fetch_all_data(grid_points, start_date, end_date):
                 dates = []
                 current_ts = start_ts
                 while current_ts < end_ts:
-                    date_str = datetime.utcfromtimestamp(current_ts).strftime('%Y-%m-%d')
+                    date_str = datetime.utcfromtimestamp(current_ts+43200).strftime('%Y-%m-%d')
                     dates.append(date_str)
                     current_ts += step_sec
                 
@@ -259,11 +259,11 @@ def create_timemap(records, border_path, output_path):
 
 def main():
     print("Pokrećem automatsko ažuriranje karte padavina...")
-    end_date = datetime.now() - timedelta(days=0)
+    end_date = datetime.now() - timedelta(days=1)
     start_date = end_date - timedelta(days=DAYS_TO_FETCH - 1)
     start_str = start_date.strftime('%Y-%m-%d')
     end_str = end_date.strftime('%Y-%m-%d')
-    print(f"Period: {(start_date-timedelta(days=1)).strftime('%d-%m-%Y')} – {(end_date-timedelta(days=1)).strftime('%d-%m-%Y')}")
+    print(f"Period: {start_str} – {end_str}")
     
     try:
         download_bih_border()
