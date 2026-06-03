@@ -15,7 +15,11 @@ import openmeteo_requests
 import pandas as pd
 from folium.plugins import HeatMapWithTime
 from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
+import requests_cache
+from retry_requests import retry
 
+cache_session = requests_cache.CachedSession('.cache', expire_after = -1)
+retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
 # ---------- KONFIGURACIJA ----------
 BIH_BORDER_URL = "https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson"
 BORDER_FILENAME = "bi_border.geojson"
@@ -51,7 +55,7 @@ def generate_grid():
     print(f"Generirano {len(points)} grid tačaka")
     return points
 
-@retry(wait=wait_exponential(multiplier=2, min=5, max=60), stop=stop_after_attempt(5))
+#@retry(wait=wait_exponential(multiplier=2, min=5, max=60), stop=stop_after_attempt(5))
 def fetch_batch(latitudes, longitudes, start_date, end_date):
     """Batch zahtjev prema archive API (historijski podaci)"""
     openmeteo = openmeteo_requests.Client()
