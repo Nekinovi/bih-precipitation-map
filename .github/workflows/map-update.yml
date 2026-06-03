@@ -2,7 +2,7 @@ name: Daily Precipitation Map Update 2
 
 on:
   schedule:
-    - cron: '15 1 * * *'
+    - cron: '20 1 * * *'
   workflow_dispatch:
     
 
