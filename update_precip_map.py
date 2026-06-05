@@ -80,7 +80,7 @@ def fetch_batch(latitudes, longitudes, start_date, end_date):
 def fetch_all_data(grid_points, start_date, end_date):
     records = []
     total = len(grid_points)
-    chunk_size = 180
+    chunk_size = 100
     
     for i in range(0, total, chunk_size):
         chunk = grid_points[i:i+chunk_size]
