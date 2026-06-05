@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests numpy folium tenacity pandas openmeteo-requests requests_cache  retry_requests
+          pip install requests numpy folium tenacity pandas openmeteo-requests requests_cache retry_requests geojsoncontour scipy matplotlib
 
           
       - name: Run script and update map
