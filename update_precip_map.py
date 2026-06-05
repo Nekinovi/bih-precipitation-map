@@ -75,7 +75,7 @@ def fetch_batch(latitudes, longitudes, start_date, end_date):
         "forecast_days": 0,
         "timezone": "Europe/Sarajevo"
     }
-    return openmeteo.weather_api(url, params=params)
+    return openmeteo.weather_api(url, params=params, timeout=60)
 
 def fetch_all_data(grid_points, start_date, end_date):
     records = []
