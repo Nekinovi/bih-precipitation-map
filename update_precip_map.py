@@ -27,7 +27,7 @@ from scipy.interpolate import griddata
 from matplotlib.colors import LinearSegmentedColormap, to_hex
 
 cache_session = requests_cache.CachedSession('.cache', expire_after = -1)
-retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
+retry_session = retry(cache_session, retries = 7, backoff_factor = 1.0)
 # ---------- KONFIGURACIJA ----------
 BIH_BORDER_URL = "https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson"
 BORDER_FILENAME = "bi_border.geojson"
