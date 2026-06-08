@@ -33,7 +33,7 @@ retry_session = retry(cache_session, retries = 7, backoff_factor = 1.0)
 BIH_BORDER_URL = "https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson"
 BORDER_FILENAME = "bi_border.geojson"
 OUTPUT_HTML = "docs/index.html"
-GRID_STEP = 0.07
+GRID_STEP = 0.0625
 DAYS_TO_FETCH = 10
 
 MIN_LAT, MAX_LAT = 42.5, 45.3
@@ -133,7 +133,7 @@ def fetch_all_data(grid_points, start_date=None, end_date=None):
         for chunk in failed:
             if not _try_chunk(chunk, records):
                 still.append(chunk)
-            time.sleep(5)
+            time.sleep(10)
         failed = still
 
     if failed:
