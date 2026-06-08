@@ -14,7 +14,7 @@ import numpy as np
 import openmeteo_requests
 import pandas as pd
 from folium.plugins import HeatMapWithTime
-from tenacity import retry as retry_dec, wait_exponential, stop_after_attemptimport requests_cache
+from tenacity import retry as retry_dec, wait_exponential, stop_after_attemptimport, requests_cache
 from retry_requests import retry
 import matplotlib
 matplotlib.use("Agg")          # bitno za CI / GitHub Actions (nema displeja)
