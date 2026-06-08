@@ -64,8 +64,8 @@ def generate_grid():
     print(f"Generirano {len(points)} grid tačaka")
     return points
 
-@retry_dec(wait=wait_exponential(multiplier=2, min=4, max=40),
-           stop=stop_after_attempt(4), reraise=True)
+@retry_dec(wait=wait_exponential(multiplier=2, min=10, max=70),
+           stop=stop_after_attempt(5), reraise=True)
 def fetch_batch(latitudes, longitudes):
     openmeteo = openmeteo_requests.Client(session=retry_session)
     url = "https://api.open-meteo.com/v1/forecast"
@@ -107,6 +107,22 @@ def _try_chunk(chunk, records):
     except Exception as e:
         print(f"  -> Batch pao (nakon retry-ja): {e}")
         return False
+# --- ograničenje tempa: Open-Meteo dozvoljava 600 poziva/min,
+#     a kod multi-lokacije svaka lokacija = 1 poziv ---
+_RATE_LIMIT_PER_MIN = 500          # margina ispod 600
+_sent_log = []                     # (timestamp, broj_lokacija)
+
+def _respect_rate_limit(n_next):
+    now = time.time()
+    while _sent_log and now - _sent_log[0][0] >= 60:
+        _sent_log.pop(0)
+    used = sum(n for _, n in _sent_log)
+    if used + n_next > _RATE_LIMIT_PER_MIN and _sent_log:
+        wait = 60 - (now - _sent_log[0][0]) + 1
+        if wait > 0:
+            print(f"  (rate-limit pauza ~{wait:.0f}s da ostanem ispod 600/min)")
+            time.sleep(wait)
+    _sent_log.append((time.time(), n_next))
 
 def fetch_all_data(grid_points, start_date=None, end_date=None):
     records = []
@@ -117,12 +133,12 @@ def fetch_all_data(grid_points, start_date=None, end_date=None):
     failed = []
     for i, chunk in enumerate(chunks):
         print(f"Šaljem batch {i+1}/{len(chunks)}...")
+        _respect_rate_limit(len(chunk))          # <-- DODATI
         if _try_chunk(chunk, records):
             print(f"  -> OK ({len(chunk)} lokacija)")
         else:
             failed.append(chunk)
         time.sleep(3 + random.random() * 2)
-
     # drugi i treći prolaz za neuspjele
     for p in range(2):
         if not failed:
@@ -131,9 +147,10 @@ def fetch_all_data(grid_points, start_date=None, end_date=None):
         time.sleep(20)
         still = []
         for chunk in failed:
+            _respect_rate_limit(len(chunk))      # <-- DODATI
             if not _try_chunk(chunk, records):
                 still.append(chunk)
-            time.sleep(10)
+            time.sleep(5)
         failed = still
 
     if failed:
