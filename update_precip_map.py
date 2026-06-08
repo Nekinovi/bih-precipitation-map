@@ -32,7 +32,7 @@ retry_session = retry(cache_session, retries = 7, backoff_factor = 1.0)
 BIH_BORDER_URL = "https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson"
 BORDER_FILENAME = "bi_border.geojson"
 OUTPUT_HTML = "docs/index.html"
-GRID_STEP = 0.0625
+GRID_STEP = 0.07
 DAYS_TO_FETCH = 10
 
 MIN_LAT, MAX_LAT = 42.5, 45.3
@@ -81,7 +81,7 @@ def fetch_batch(latitudes, longitudes, start_date, end_date):
 def fetch_all_data(grid_points, start_date, end_date):
     records = []
     total = len(grid_points)
-    chunk_size = 200
+    chunk_size = 150
     
     for i in range(0, total, chunk_size):
         chunk = grid_points[i:i+chunk_size]
@@ -120,7 +120,7 @@ def fetch_all_data(grid_points, start_date, end_date):
             print(f"  -> Uspješno obrađeno {len(chunk)} lokacija")
         except Exception as e:
             print(f"  -> Greška za batch: {e}")
-        time.sleep(15)  # pauza između batch-eva da ne preopteretimo API
+        time.sleep(5)  # pauza između batch-eva da ne preopteretimo API
     
     print(f"Ukupno prikupljeno {len(records)} zapisa")
     unique_dates = sorted(set(r['date'] for r in records))
