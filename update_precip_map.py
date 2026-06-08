@@ -14,14 +14,14 @@ import numpy as np
 import openmeteo_requests
 import pandas as pd
 from folium.plugins import HeatMapWithTime
-from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
-import requests_cache
+from tenacity import retry as retry_dec, wait_exponential, stop_after_attemptimport requests_cache
 from retry_requests import retry
 import matplotlib
 matplotlib.use("Agg")          # bitno za CI / GitHub Actions (nema displeja)
 import matplotlib.pyplot as plt
 import scipy.ndimage
 import geojsoncontour
+import random
 from folium.plugins import TimestampedGeoJson
 from scipy.interpolate import griddata
 from matplotlib.colors import LinearSegmentedColormap, to_hex
@@ -63,10 +63,11 @@ def generate_grid():
     print(f"Generirano {len(points)} grid tačaka")
     return points
 
-#@retry(wait=wait_exponential(multiplier=2, min=5, max=60), stop=stop_after_attempt(5))
-def fetch_batch(latitudes, longitudes, start_date, end_date):
-    openmeteo = openmeteo_requests.Client()
-    url = "https://api.open-meteo.com/v1/forecast"  # <-- jedina promjena
+@retry_dec(wait=wait_exponential(multiplier=2, min=4, max=40),
+           stop=stop_after_attempt(4), reraise=True)
+def fetch_batch(latitudes, longitudes):
+    openmeteo = openmeteo_requests.Client(session=retry_session)
+    url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": latitudes,
         "longitude": longitudes,
@@ -74,54 +75,69 @@ def fetch_batch(latitudes, longitudes, start_date, end_date):
         "past_days": DAYS_TO_FETCH,
         "forecast_days": 0,
         "timezone": "Europe/Sarajevo",
-        "models": "icon_eu"
+        "models": "icon_eu",
     }
-    return openmeteo.weather_api(url, params=params, timeout=60)
+    return openmeteo.weather_api(url, params=params)
 
-def fetch_all_data(grid_points, start_date, end_date):
+def _process_responses(responses, records):
+    for resp in responses:
+        lat = resp.Latitude(); lon = resp.Longitude()
+        daily = resp.Daily()
+        precip = daily.Variables(0).ValuesAsNumpy()
+        start_ts = daily.Time(); end_ts = daily.TimeEnd()
+        step_sec = daily.Interval() if daily.Interval() > 0 else 86400
+        dates, current_ts = [], start_ts
+        while current_ts < end_ts:
+            dates.append(datetime.utcfromtimestamp(current_ts + 43200).strftime('%Y-%m-%d'))
+            current_ts += step_sec
+        for j, date_str in enumerate(dates):
+            if j < len(precip):
+                records.append({
+                    'lat': float(lat), 'lon': float(lon), 'date': date_str,
+                    'precipitation_sum': float(precip[j]) if not np.isnan(precip[j]) else 0.0
+                })
+
+def _try_chunk(chunk, records):
+    lats = [p['lat'] for p in chunk]; lons = [p['lon'] for p in chunk]
+    try:
+        responses = fetch_batch(lats, lons)
+        _process_responses(responses, records)
+        return True
+    except Exception as e:
+        print(f"  -> Batch pao (nakon retry-ja): {e}")
+        return False
+
+def fetch_all_data(grid_points, start_date=None, end_date=None):
     records = []
-    total = len(grid_points)
     chunk_size = 150
-    
-    for i in range(0, total, chunk_size):
-        chunk = grid_points[i:i+chunk_size]
-        lats = [p['lat'] for p in chunk]
-        lons = [p['lon'] for p in chunk]
-        print(f"Šaljem batch {i//chunk_size+1}: {len(chunk)} lokacija...")
-        try:
-            responses = fetch_batch(lats, lons, start_date, end_date)
-            for resp in responses:
-                lat = resp.Latitude()
-                lon = resp.Longitude()
-                daily = resp.Daily()
-                precip = daily.Variables(0).ValuesAsNumpy()
-# --- ISPRAVLJENI DIO ZA GENERISANJE DATUMA ---
-                start_ts = daily.Time()
-                end_ts = daily.TimeEnd()
-                step_sec = daily.Interval() if daily.Interval() > 0 else 86400
-                
-                # Generišemo sve datume za ovaj vremenski opseg
-                dates = []
-                current_ts = start_ts
-                while current_ts < end_ts:
-                    date_str = datetime.utcfromtimestamp(current_ts+43200).strftime('%Y-%m-%d')
-                    dates.append(date_str)
-                    current_ts += step_sec
-                
-                # Spajanje datuma sa vrijednostima padavina
-                for j, date_str in enumerate(dates):
-                    if j < len(precip):
-                        records.append({
-                            'lat': float(lat),  # Odmah pretvaramo u float da JavaScript ne pukne
-                            'lon': float(lon),  # Odmah pretvaramo u float
-                            'date': date_str,
-                            'precipitation_sum': float(precip[j]) if not np.isnan(precip[j]) else 0.0
-                        })
-            print(f"  -> Uspješno obrađeno {len(chunk)} lokacija")
-        except Exception as e:
-            print(f"  -> Greška za batch: {e}")
-        time.sleep(5)  # pauza između batch-eva da ne preopteretimo API
-    
+    chunks = [grid_points[i:i+chunk_size] for i in range(0, len(grid_points), chunk_size)]
+    print(f"Ukupno {len(chunks)} batcheva po {chunk_size} lokacija")
+
+    failed = []
+    for i, chunk in enumerate(chunks):
+        print(f"Šaljem batch {i+1}/{len(chunks)}...")
+        if _try_chunk(chunk, records):
+            print(f"  -> OK ({len(chunk)} lokacija)")
+        else:
+            failed.append(chunk)
+        time.sleep(3 + random.random() * 2)
+
+    # drugi i treći prolaz za neuspjele
+    for p in range(2):
+        if not failed:
+            break
+        print(f"Ponovni prolaz {p+1} za {len(failed)} neuspjelih batcheva...")
+        time.sleep(20)
+        still = []
+        for chunk in failed:
+            if not _try_chunk(chunk, records):
+                still.append(chunk)
+            time.sleep(5)
+        failed = still
+
+    if failed:
+        print(f"UPOZORENJE: {len(failed)} batcheva trajno neuspjelo")
+
     print(f"Ukupno prikupljeno {len(records)} zapisa")
     unique_dates = sorted(set(r['date'] for r in records))
     print(f"Pronađeno dana: {len(unique_dates)} -> {unique_dates}")
