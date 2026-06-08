@@ -222,9 +222,20 @@ def create_timemap(records, border_path, output_path):
     LON, LAT = np.meshgrid(lon_f, lat_f)
  
     # ---- DNEVNI sloj (vremenski slider) ----
+    cx, cy = (MIN_LON + MAX_LON) / 2.0, (MIN_LAT + MAX_LAT) / 2.0
     daily_features = []
     for d in index:
-        for feat in _build_contour_geojson(by_date[d], levels, colors, lon_f, lat_f, LON, LAT):
+        feats = _build_contour_geojson(by_date[d], levels, colors, lon_f, lat_f, LON, LAT)
+        if not feats:
+            # suh dan (sve < 0.5 mm) -> nevidljivi placeholder da dan ostane na slideru
+            feats = [{
+                "type": "Feature",
+                "properties": {"style": {"fillOpacity": 0, "weight": 0,
+                                         "color": "#000000", "fillColor": "#000000"}},
+                "geometry": {"type": "Polygon", "coordinates": [[
+                    [cx, cy], [cx + 0.001, cy], [cx + 0.001, cy + 0.001], [cx, cy]]]},
+            }]
+        for feat in feats:
             feat["properties"]["times"] = [d]
             daily_features.append(feat)
  
