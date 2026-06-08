@@ -76,7 +76,7 @@ def fetch_batch(latitudes, longitudes):
         "past_days": DAYS_TO_FETCH,
         "forecast_days": 0,
         "timezone": "Europe/Sarajevo",
-        "models": "icon_eu",
+        
     }
     return openmeteo.weather_api(url, params=params)
 
