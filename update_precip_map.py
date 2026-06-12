@@ -33,7 +33,7 @@ retry_session = retry(cache_session, retries = 7, backoff_factor = 1.0)
 BIH_BORDER_URL = "https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson"
 BORDER_FILENAME = "bi_border.geojson"
 OUTPUT_HTML = "docs/index.html"
-GRID_STEP = 0.0625
+GRID_STEP = 0.0625   # ~7 km, daje oko 200-250 tačaka unutar BiH
 DAYS_TO_FETCH = 10
 
 MIN_LAT, MAX_LAT = 42.5, 45.3
@@ -171,7 +171,13 @@ def _build_contour_geojson(points_dict, levels, colors, lon_f, lat_f, LON, LAT):
     if len(pts) < 4:
         return []
     Z = griddata(pts[:, [1, 0]], vals, (LON, LAT), method="linear")
+    # popuni NaN rupe (izvan konveksnog omotača) najbližom vrijednošću
+    mask = np.isnan(Z)
+    if mask.any():
+        Zn = griddata(pts[:, [1, 0]], vals, (LON, LAT), method="nearest")
+        Z[mask] = Zn[mask]
     Z = np.clip(Z, 0, None)
+    Z = scipy.ndimage.gaussian_filter(Z, sigma=1.5)   # <-- zagladi sitne rupe
     fig, ax = plt.subplots()
     cs = ax.contourf(lon_f, lat_f, Z, levels=levels, colors=colors, extend="max")
     plt.close(fig)
@@ -200,7 +206,7 @@ def create_timemap(records, border_path, output_path):
         by_date[r['date']][key] = float(r['precipitation_sum'])
     index = sorted(by_date.keys())
     print(f"Index (datumi za slider): {index}")
- 
+
     # --- DNEVNI nivoi/boje ---
     levels = [0.5, 1, 2, 5, 10, 15, 20, 30, 40, 60, 80, 100, 150, 200, 300]
     colors = ['#f0f0f7', '#c5d8f2', '#7aa8ec', '#2f6fe0', '#1f3fb0',
@@ -261,8 +267,12 @@ def create_timemap(records, border_path, output_path):
  
     ts = TimestampedGeoJson(
         {"type": "FeatureCollection", "features": daily_features},
-        period="P1D", duration="P1D", transition_time=600,
-        auto_play=False, loop=False, date_options="YYYY-MM-DD",
+        period="P1D",
+        duration=None,          # <-- umjesto "P1D"; feature ostaje dok ne dođe sljedeći
+        transition_time=600,
+        auto_play=False,
+        loop=False,
+        date_options="YYYY-MM-DD",
     )
     ts.add_to(m)
  
